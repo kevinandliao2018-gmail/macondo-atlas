@@ -567,6 +567,69 @@ When adding UI:
 - Keep relation/map UI readable and navigational.
 - Do not introduce a heavy visualization dependency unless interaction requirements become materially more complex.
 
+## Deployment Workflow
+
+Production is deployed through GitHub + Netlify. Supabase credentials are configured only as Netlify/local environment variables when backend features need them.
+
+### GitHub
+
+- Canonical repository: `git@github.com:kevinandliao2018-gmail/macondo-atlas.git`
+- Current pushed branch: `main`
+- If local SSH auth points to the wrong GitHub account, use the HTTPS remote instead:
+  `https://github.com/kevinandliao2018-gmail/macondo-atlas.git`
+- Recommended GitHub CLI repair flow when HTTPS auth is needed:
+  - `gh auth login`
+  - choose `github.com`
+  - choose `HTTPS` for Git operations
+  - run `gh auth setup-git`
+  - confirm `git remote -v`
+- Before pushing, run `git status -sb` and ensure private folders, `.env`, `dist/`, and `node_modules/` are not staged.
+
+### Netlify
+
+- Netlify project: `macondo-atlas`
+- Netlify project URL: `https://app.netlify.com/projects/macondo-atlas`
+- Production site URL: `https://macondo-atlas.netlify.app`
+- Build settings are committed in `netlify.toml`:
+  - build command: `npm run build`
+  - publish directory: `dist`
+- `astro.config.mjs` reads `process.env.PUBLIC_SITE_URL` and falls back to `https://macondo-atlas.netlify.app`.
+- A push to `main` should trigger a Netlify production deploy when the project is connected to the GitHub repo.
+- If Netlify says “No config file was defined,” confirm `netlify.toml` has been pushed and the deploy is using the latest `main`.
+
+### Supabase And Environment Variables
+
+- Do not commit `.env` or any secret value.
+- Netlify environment variables may include these names when the project needs Supabase/server features:
+  - `PUBLIC_SITE_URL`
+  - `SUPABASE_URL`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+  - `DATABASE_URL`
+  - `BLOG_ADMIN_TOKEN`
+- Only `PUBLIC_SITE_URL` is safe to expose client-side. Treat `DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `BLOG_ADMIN_TOKEN` as server-only secrets.
+- If a database password, service role key, or admin token is exposed in chat/logs/docs, rotate it in Supabase/Netlify before relying on production.
+- This static Astro surface currently builds without Supabase access; missing Supabase variables should not block `npm run build` unless future backend code explicitly requires them.
+
+### Private Source Boundary
+
+- Raw/private source folders stay local-only and are ignored by Git, including `/原文/` and the other research-material directories listed in `.gitignore`.
+- `scripts/check-content.mjs` must keep public content validation strict while allowing `/原文/` to be absent on CI/Netlify.
+- The check should still fail if a public route such as `src/pages/original` is introduced for private source material.
+
+### Standard Deploy Steps
+
+1. Run `npm run content:check`.
+2. Run `npm run build`.
+3. Optionally simulate Netlify/private-source absence with `CI=true npm run content:check` in a temporary copy that excludes `/原文/`.
+4. Confirm `git status --short` contains only intended source/config changes.
+5. Commit with a concise message and push `main`.
+6. Check Netlify deploy logs for successful Astro build and Pagefind generation.
+7. Verify production with `curl -I https://macondo-atlas.netlify.app` or a browser smoke test.
+
+Common Netlify failure to remember:
+
+- `Expected private source directory 原文/ to remain in place` means the content check has become CI-hostile again. Keep private source material untracked and fix the checker, not the deploy by pushing private raw text.
+
 ## Development Notes For Future Agents
 
 - Content references should be validated with `npm run content:check` after relationship or content schema work.
