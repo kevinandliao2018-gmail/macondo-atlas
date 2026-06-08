@@ -1,0 +1,24 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { chapterHref } from '@lib/content';
+
+const chapters = (await getCollection('chapters')).sort((a, b) => a.data.chapter - b.data.chapter);
+---
+
+<BaseLayout title="章节">
+  <section class="surface" style="margin-bottom: 22px;">
+    <p class="eyebrow">Chapter Atlas</p>
+    <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem);">章节解读</h1>
+    <p class="lead">二十章档案已经串成阅读地图：从章节进入人物命运，从意象进入主题网络，再回到主线事件和解读文章。</p>
+  </section>
+  <section class="grid cols-3">
+    {chapters.map((chapter) => (
+      <a class="link-card" href={chapterHref(chapter.data.chapter)}>
+        <span class="eyebrow">第 {chapter.data.chapter} 章 · {chapter.data.phase}</span>
+        <strong>{chapter.data.subtitle}</strong>
+        <span>{chapter.data.summary}</span>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

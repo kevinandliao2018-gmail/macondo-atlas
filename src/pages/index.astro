@@ -1,0 +1,140 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { articleHref, chapterHref, characterHref, getPublicArticles, motifHref, themeHref } from '@lib/content';
+import { buildThemeIndex } from '@lib/relations';
+
+const [articles, chapters, characters, motifs, events] = await Promise.all([
+  getPublicArticles(),
+  getCollection('chapters'),
+  getCollection('characters'),
+  getCollection('motifs'),
+  getCollection('events')
+]);
+
+const featuredArticles = articles.slice(0, 4);
+const featuredChapters = [...chapters].sort((a, b) => a.data.chapter - b.data.chapter);
+const themes = buildThemeIndex({ articles, events });
+const readingPaths = [
+  {
+    title: '二十章主线',
+    summary: '按章节推进，进入每章主线事件、人物命运、核心意象和自动推荐解读。',
+    href: chapterHref(1)
+  },
+  {
+    title: '雨的密码',
+    summary: '沿着“马孔多在下雨”进入孤独、战争、遗忘和第十六章的漫长水声。',
+    href: motifHref('rain')
+  },
+  {
+    title: '女性守护者',
+    summary: '以乌尔苏拉为中心，阅读家族秩序、时间洞察与衰败中的韧性。',
+    href: characterHref('ursula-iguaran')
+  },
+  {
+    title: '记忆主题线',
+    summary: '沿着记忆、历史创伤、阅读和回返，查看主题如何在全书反复显影。',
+    href: themeHref('memory')
+  }
+];
+---
+
+<BaseLayout>
+  <section class="hero-map">
+    <div class="hero-panel">
+      <p class="eyebrow">Macondo Reading Atlas</p>
+      <h1>马孔多档案馆</h1>
+      <p class="lead">
+        一座围绕《百年孤独》的阅读地图：从章节进入人物命运，从意象进入主题网络，追踪布恩迪亚家族的百年循环。
+      </p>
+      <div class="meta-row" style="margin-top: 24px;">
+        <span class="tag">{articles.length} 篇公开文章</span>
+        <span class="tag">{chapters.length} 个章节档案</span>
+        <span class="tag">{characters.length} 位人物</span>
+        <span class="tag">{motifs.length} 个意象</span>
+        <span class="tag">{themes.length} 条主题线</span>
+      </div>
+    </div>
+    <div class="surface">
+      <h2>阅读路径</h2>
+      <ul class="compact-list">
+        {readingPaths.map((path) => (
+          <li>
+            <a class="link-card" href={path.href}>
+              <strong>{path.title}</strong>
+              <span>{path.summary}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid cols-3" style="margin-bottom: 28px;">
+    <div class="surface">
+      <h2>章节</h2>
+      <ul class="compact-list">
+        {featuredChapters.map((chapter) => (
+          <li>
+            <a class="link-card" href={chapterHref(chapter.data.chapter)}>
+              <strong>{chapter.data.title}：{chapter.data.subtitle}</strong>
+              <span>{chapter.data.summary}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div class="surface">
+      <h2>人物</h2>
+      <ul class="compact-list">
+        {characters.map((character) => (
+          <li>
+            <a class="link-card" href={characterHref(character.data.slug)}>
+              <strong>{character.data.name}</strong>
+              <span>{character.data.role} · 第 {character.data.generation} 代</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div class="surface">
+      <h2>意象</h2>
+      <ul class="compact-list">
+        {motifs.map((motif) => (
+          <li>
+            <a class="link-card" href={motifHref(motif.data.slug)}>
+              <strong>{motif.data.name}</strong>
+              <span>{motif.data.summary}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div class="surface">
+      <h2>主题</h2>
+      <ul class="compact-list">
+        {themes.map((theme) => (
+          <li>
+            <a class="link-card" href={theme.href}>
+              <strong>{theme.name}</strong>
+              <span>{theme.eventCount} 个事件 · {theme.chapterCount} 个章节</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="surface">
+    <h2>精选研究</h2>
+    <div class="grid cols-2">
+      {featuredArticles.map((article) => (
+        <a class="link-card" href={articleHref(article.data.slug)}>
+          <strong>{article.data.title}</strong>
+          <span>{article.data.summary}</span>
+          <span class="muted">{article.data.type}</span>
+        </a>
+      ))}
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,27 @@
+---
+interface Props {
+  title?: string;
+  items?: Array<{ title: string; href: string; summary: string; reasons?: string[] }>;
+}
+
+const { title = '继续阅读', items = [] } = Astro.props;
+---
+
+{items.length > 0 && (
+  <section style="border-top: 1px solid var(--line); margin-top: 38px; padding-top: 24px;">
+    <h2>{title}</h2>
+    <div class="grid cols-2">
+      {items.map((item) => (
+        <a class="link-card" href={item.href}>
+          <strong>{item.title}</strong>
+          <span>{item.summary}</span>
+          {item.reasons && item.reasons.length > 0 && (
+            <span class="meta-row">
+              {item.reasons.map((reason) => <span class="tag">{reason}</span>)}
+            </span>
+          )}
+        </a>
+      ))}
+    </div>
+  </section>
+)}

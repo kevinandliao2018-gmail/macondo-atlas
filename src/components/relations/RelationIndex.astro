@@ -1,0 +1,57 @@
+---
+import type { RelationLink } from '@lib/relations';
+
+type SectionVariant = 'cards' | 'tags';
+
+type RelationSection = {
+  title: string;
+  items?: RelationLink[];
+  variant?: SectionVariant;
+};
+
+interface Props {
+  title?: string;
+  sections?: RelationSection[];
+}
+
+const { title, sections = [] } = Astro.props;
+const visibleSections = sections.filter((section) => (section.items ?? []).length > 0);
+---
+
+{visibleSections.length > 0 && (
+  <div class="relation-index">
+    {title && <h2>{title}</h2>}
+    <div class="relation-index-grid">
+      {visibleSections.map((section) => (
+        <section class="relation-index-section">
+          <h3>{section.title}</h3>
+          {(section.variant ?? 'tags') === 'cards' ? (
+            <div class="relation-card-list">
+              {section.items?.map((item) => (
+                <a class="link-card" href={item.href}>
+                  <strong>{item.title}</strong>
+                  {item.summary && <span>{item.summary}</span>}
+                  {(item.meta || item.count) && (
+                    <span class="relation-card-meta">
+                      {item.meta && <span>{item.meta}</span>}
+                      {item.count && <span class="relation-count">{item.count}</span>}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div class="meta-row relation-tags">
+              {section.items?.map((item) => (
+                <a class="tag relation-tag" href={item.href}>
+                  <span>{item.title}</span>
+                  {item.count && <span class="relation-count">{item.count}</span>}
+                </a>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  </div>
+)}

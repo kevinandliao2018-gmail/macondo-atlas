@@ -1,0 +1,31 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import ArticleHeader from '@components/article/ArticleHeader.astro';
+import ArticleToc from '@components/article/ArticleToc.astro';
+import RelatedReading from '@components/article/RelatedReading.astro';
+
+interface Props {
+  title: string;
+  summary: string;
+  type: string;
+  date: Date;
+  tags?: string[];
+  headings?: Array<{ depth: number; slug: string; text: string }>;
+  related?: Array<{ title: string; href: string; summary: string; reasons?: string[] }>;
+}
+
+const { title, summary, type, date, tags = [], headings = [], related = [] } = Astro.props;
+---
+
+<BaseLayout title={title} description={summary}>
+  <article class="article-shell">
+    <div class="article-content">
+      <ArticleHeader title={title} summary={summary} type={type} date={date} tags={tags} />
+      <slot />
+      <RelatedReading items={related} />
+    </div>
+    <aside class="article-aside">
+      <ArticleToc headings={headings} />
+    </aside>
+  </article>
+</BaseLayout>

@@ -1,0 +1,77 @@
+---
+import { getCollection, render } from 'astro:content';
+import RelatedReading from '@components/article/RelatedReading.astro';
+import ChapterTimeline from '@components/chapter/ChapterTimeline.astro';
+import KnowledgeLayout from '@layouts/KnowledgeLayout.astro';
+import { byId, characterHref, getChapterRelatedArticles, isPublic, motifHref, timelineHref } from '@lib/content';
+
+export async function getStaticPaths() {
+  const [chapters, events, articles, characters, motifs] = await Promise.all([
+    getCollection('chapters'),
+    getCollection('events'),
+    getCollection('articles'),
+    getCollection('characters'),
+    getCollection('motifs')
+  ]);
+
+  return chapters.map((chapter) => ({
+    params: { chapter: String(chapter.data.chapter).padStart(2, '0') },
+    props: { chapter, events, articles, characters, motifs }
+  }));
+}
+
+const { chapter, events, articles, characters, motifs } = Astro.props;
+const chapterEvents = events.filter((event) => event.data.chapter === chapter.data.chapter);
+const publicArticles = articles.filter((article) => isPublic(article.data));
+const characterMap = byId(characters);
+const motifMap = byId(motifs);
+const related = getChapterRelatedArticles(chapter, publicArticles);
+const { Content } = await render(chapter);
+---
+
+<KnowledgeLayout
+  title={`${chapter.data.title}：${chapter.data.subtitle}`}
+  subtitle={`${chapter.data.phase} · Chapter ${String(chapter.data.chapter).padStart(2, '0')}`}
+  summary={chapter.data.summary}
+  tags={chapter.data.keywords}
+>
+  <section class="grid cols-2">
+    <div class="surface">
+      <h2>事件时间线</h2>
+      <ChapterTimeline events={chapterEvents} />
+    </div>
+    <div class="surface">
+      <h2>关联入口</h2>
+      <div class="meta-row" style="margin-bottom: 18px;">
+        {chapter.data.characters.map((id) => {
+          const character = characterMap.get(id);
+          return character ? (
+            <a class="tag" href={characterHref(character.data.slug)}>{character.data.name}</a>
+          ) : (
+            <span class="tag">{id}</span>
+          );
+        })}
+      </div>
+      <div class="meta-row">
+        {chapter.data.motifs.map((id) => {
+          const motif = motifMap.get(id);
+          return motif ? <a class="tag" href={motifHref(motif.data.slug)}>{motif.data.name}</a> : <span class="tag">{id}</span>;
+        })}
+      </div>
+      <a class="map-entry-link" href={timelineHref({ chapter: chapter.data.chapter })}>
+        查看相关事件在全书时间线中的位置
+      </a>
+    </div>
+  </section>
+
+  <section class="surface" style="margin-top: 22px;">
+    <h2>章节档案</h2>
+    <div class="article-content">
+      <Content />
+    </div>
+  </section>
+
+  <div class="surface" style="margin-top: 22px;">
+    <RelatedReading title="相关解读" items={related} />
+  </div>
+</KnowledgeLayout>

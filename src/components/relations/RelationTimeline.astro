@@ -1,0 +1,64 @@
+---
+import { chapterHref } from '@lib/content';
+import type { ArchiveEvent } from '@lib/relations';
+
+interface Props {
+  events?: ArchiveEvent[];
+  emptyLabel?: string;
+}
+
+const { events = [], emptyLabel = '暂无关联事件。' } = Astro.props;
+const groupedEvents = [...events]
+  .sort((a, b) => a.chapter - b.chapter || a.order - b.order)
+  .reduce<Array<{ chapter: number; events: ArchiveEvent[] }>>((groups, event) => {
+    const group = groups.find((item) => item.chapter === event.chapter);
+    if (group) {
+      group.events.push(event);
+    } else {
+      groups.push({ chapter: event.chapter, events: [event] });
+    }
+    return groups;
+  }, []);
+---
+
+{groupedEvents.length > 0 ? (
+  <div class="relation-timeline">
+    {groupedEvents.map((group) => (
+      <section class="timeline-chapter" aria-labelledby={`chapter-${group.chapter}-events`}>
+        <a class="timeline-chapter-heading" href={chapterHref(group.chapter)} id={`chapter-${group.chapter}-events`}>
+          <span>第 {group.chapter} 章</span>
+          <small>{group.events.length} 个事件</small>
+        </a>
+        <ol class="timeline timeline-archive">
+          {group.events.map((event) => (
+            <li id={event.id}>
+              <span class="dot">{String(event.order).padStart(2, '0')}</span>
+              <div>
+                <a class="event-title" href={event.href}>{event.title}</a>
+                <p class="muted" style="margin: 4px 0 0;">{event.summary}</p>
+                <div class="relation-event-meta">
+                  {event.characters.length > 0 && (
+                    <div class="meta-row">
+                      {event.characters.map((character) => (
+                        <a class="tag" href={character.href}>{character.title}</a>
+                      ))}
+                    </div>
+                  )}
+                  {event.motifs.length > 0 && (
+                    <div class="meta-row">
+                      {event.motifs.map((motif) => (
+                        <a class="tag tag-muted" href={motif.href}>{motif.title}</a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+    ))}
+  </div>
+) : (
+  <p class="muted">{emptyLabel}</p>
+)}

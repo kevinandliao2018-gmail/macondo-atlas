@@ -1,0 +1,38 @@
+---
+import type { CoOccurrenceItem } from '@lib/relations';
+
+interface Props {
+  title?: string;
+  characters?: CoOccurrenceItem[];
+  motifs?: CoOccurrenceItem[];
+  chapters?: CoOccurrenceItem[];
+}
+
+const { title = '同场关系', characters = [], motifs = [], chapters = [] } = Astro.props;
+const sections = [
+  { title: '同场人物', items: characters },
+  { title: '同场意象', items: motifs },
+  { title: '章节密度', items: chapters }
+].filter((section) => section.items.length > 0);
+---
+
+{sections.length > 0 && (
+  <div class="co-occurrence-panel">
+    <h2>{title}</h2>
+    <div class="co-occurrence-grid">
+      {sections.map((section) => (
+        <section class="co-occurrence-section">
+          <h3>{section.title}</h3>
+          <div class="co-occurrence-list">
+            {section.items.map((item) => (
+              <a class="co-occurrence-item" href={item.href}>
+                <span>{item.title}</span>
+                <span class="relation-count">{item.count}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  </div>
+)}

@@ -1,0 +1,62 @@
+---
+import '@styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = '马孔多档案馆',
+  description = '《百年孤独》深度解读、人物谱系、章节导读、意象索引与互文研究平台。'
+} = Astro.props;
+
+const navItems = [
+  ['/', '阅读地图'],
+  ['/chapters', '章节'],
+  ['/characters', '人物'],
+  ['/motifs', '意象'],
+  ['/themes', '主题'],
+  ['/timeline', '事件'],
+  ['/map', '图谱'],
+  ['/articles', '文章'],
+  ['/search', '搜索']
+];
+
+const pathname = Astro.url.pathname;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <title>{title === '马孔多档案馆' ? title : `${title} | 马孔多档案馆`}</title>
+  </head>
+  <body>
+    <div class="site-shell">
+      <header class="site-header">
+        <div class="nav-wrap">
+          <a class="brand" href="/">
+            <strong>马孔多档案馆</strong>
+            <span>One Hundred Years of Solitude Reading Atlas</span>
+          </a>
+          <nav class="nav-links" aria-label="主导航">
+            {navItems.map(([href, label]) => (
+              <a href={href} aria-current={pathname === href ? 'page' : undefined}>{label}</a>
+            ))}
+          </nav>
+        </div>
+      </header>
+      <main class="page-main">
+        <slot />
+      </main>
+      <footer class="site-footer">
+        <div class="inner">
+          本站为文学研究与阅读解读平台。作品原文版权归原作者、译者及出版社所有，公开页面仅展示原创分析与必要短引。
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

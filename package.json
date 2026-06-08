@@ -1,0 +1,29 @@
+{
+  "name": "macondo-archive",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "ASTRO_TELEMETRY_DISABLED=1 astro dev",
+    "build": "ASTRO_TELEMETRY_DISABLED=1 astro build && pagefind --site dist",
+    "preview": "ASTRO_TELEMETRY_DISABLED=1 astro preview",
+    "content:seed": "node scripts/seed-content.mjs",
+    "content:index": "node scripts/generate-indexes.mjs",
+    "content:check": "node scripts/check-content.mjs",
+    "prebuild": "npm run content:check && npm run content:index"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.0.0",
+    "@astrojs/react": "^4.0.0",
+    "@pagefind/default-ui": "^1.1.0",
+    "astro": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "pagefind": "^1.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

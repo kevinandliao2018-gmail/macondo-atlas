@@ -1,0 +1,65 @@
+---
+import type { MotifEvolutionLine } from '@lib/relations';
+
+interface Props {
+  evolutionLine?: MotifEvolutionLine;
+}
+
+const { evolutionLine } = Astro.props;
+---
+
+{evolutionLine && evolutionLine.phases.length > 0 && (
+  <section class="surface relation-section motif-evolution-section" aria-labelledby="motif-evolution-line-heading">
+    <div class="motif-evolution-heading">
+      <div>
+        <p class="eyebrow">Evolution Line</p>
+        <h2 id="motif-evolution-line-heading">演化线</h2>
+      </div>
+      <span>{evolutionLine.phaseCount} 个阶段 · {evolutionLine.eventCount} 个事件</span>
+    </div>
+
+    <ol class="motif-evolution-line">
+      {evolutionLine.phases.map((phase, index) => (
+        <li class="motif-evolution-phase">
+          <div class="motif-evolution-marker" aria-hidden="true">
+            <span>{String(index + 1).padStart(2, '0')}</span>
+          </div>
+          <div class="motif-evolution-phase-body">
+            <header class="motif-evolution-phase-header">
+              <div>
+                <h3>{phase.title}</h3>
+                <small>{phase.chapterSpan} · {phase.eventCount} 个事件</small>
+              </div>
+              <div class="motif-evolution-function-tags" aria-label="意象功能">
+                {phase.functions.map((label) => (
+                  <span>{label}</span>
+                ))}
+              </div>
+            </header>
+
+            {phase.characters.length > 0 && (
+              <div class="meta-row motif-evolution-characters" aria-label="关联人物">
+                {phase.characters.map((character) => (
+                  <a class="tag relation-tag" href={character.href}>
+                    <span>{character.title}</span>
+                    <span class="relation-count">{character.count}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div class="motif-evolution-events">
+              {phase.events.map((event) => (
+                <a class="motif-evolution-event" href={event.href}>
+                  <small>第 {event.chapter} 章 · {String(event.order).padStart(2, '0')}</small>
+                  <strong>{event.title}</strong>
+                  <span>{event.summary}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+)}

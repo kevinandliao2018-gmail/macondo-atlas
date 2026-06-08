@@ -1,0 +1,65 @@
+---
+import type { CharacterFateLine } from '@lib/relations';
+
+interface Props {
+  fateLine?: CharacterFateLine;
+}
+
+const { fateLine } = Astro.props;
+---
+
+{fateLine && fateLine.phases.length > 0 && (
+  <section class="surface relation-section character-fate-section" aria-labelledby="character-fate-line-heading">
+    <div class="character-fate-heading">
+      <div>
+        <p class="eyebrow">Fate Line</p>
+        <h2 id="character-fate-line-heading">命运线</h2>
+      </div>
+      <span>{fateLine.phaseCount} 个阶段 · {fateLine.eventCount} 个事件</span>
+    </div>
+
+    <ol class="character-fate-line">
+      {fateLine.phases.map((phase, index) => (
+        <li class="character-fate-phase">
+          <div class="character-fate-marker" aria-hidden="true">
+            <span>{String(index + 1).padStart(2, '0')}</span>
+          </div>
+          <div class="character-fate-phase-body">
+            <header class="character-fate-phase-header">
+              <div>
+                <h3>{phase.title}</h3>
+                <small>{phase.chapterSpan} · {phase.eventCount} 个事件</small>
+              </div>
+              <div class="character-fate-function-tags" aria-label="命运功能">
+                {phase.functions.map((label) => (
+                  <span>{label}</span>
+                ))}
+              </div>
+            </header>
+
+            {phase.motifs.length > 0 && (
+              <div class="meta-row character-fate-motifs" aria-label="关联意象">
+                {phase.motifs.map((motif) => (
+                  <a class="tag tag-muted relation-tag" href={motif.href}>
+                    <span>{motif.title}</span>
+                    <span class="relation-count">{motif.count}</span>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            <div class="character-fate-events">
+              {phase.events.map((event) => (
+                <a class="character-fate-event" href={event.href}>
+                  <small>第 {event.chapter} 章 · {String(event.order).padStart(2, '0')}</small>
+                  <strong>{event.title}</strong>
+                  <span>{event.summary}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ol>
+  </section>
+)}

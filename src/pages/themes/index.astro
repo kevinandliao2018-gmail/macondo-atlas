@@ -1,0 +1,46 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { buildThemeIndex } from '@lib/relations';
+
+const [events, articles] = await Promise.all([
+  getCollection('events'),
+  getCollection('articles')
+]);
+const themes = buildThemeIndex({ events, articles });
+---
+
+<BaseLayout
+  title="主题"
+  description="《百年孤独》主题档案，以结构化事件追踪家族、记忆、战争、死亡、情欲、现代性、命运与时间。"
+>
+  <section class="surface theme-index-hero">
+    <p class="eyebrow">Themes</p>
+    <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem);">主题档案</h1>
+    <p class="lead">从事件骨架、人物命运和意象变形继续向下，观察主题如何在全书中反复生成、转向、闭合。</p>
+    <div class="meta-row">
+      <span class="tag">{themes.length} 条主题线</span>
+      <span class="tag tag-muted">{themes.reduce((total, theme) => total + theme.eventCount, 0)} 个主题事件命中</span>
+    </div>
+  </section>
+
+  <section class="grid cols-2 theme-index-grid">
+    {themes.map((theme) => (
+      <a class="link-card theme-index-card" href={theme.href}>
+        <div>
+          <p class="eyebrow">Theme Cluster</p>
+          <strong>{theme.name}</strong>
+        </div>
+        <span>{theme.summary}</span>
+        <div class="theme-card-stats">
+          <span>{theme.eventCount} 个事件</span>
+          <span>{theme.chapterCount} 个章节</span>
+          <span>{theme.articleCount} 篇文章</span>
+        </div>
+        <div class="meta-row theme-cluster-tags" aria-label={`${theme.name}主题簇`}>
+          {theme.tags.map((tag) => <span class="tag">{tag}</span>)}
+        </div>
+      </a>
+    ))}
+  </section>
+</BaseLayout>

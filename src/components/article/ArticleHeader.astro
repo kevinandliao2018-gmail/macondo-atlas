@@ -1,0 +1,25 @@
+---
+import TagList from '@components/ui/TagList.astro';
+
+interface Props {
+  title: string;
+  summary: string;
+  type: string;
+  date: Date;
+  tags?: string[];
+}
+
+const { title, summary, type, date, tags = [] } = Astro.props;
+const formattedDate = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric'
+}).format(date);
+---
+
+<header style="margin-bottom: 28px;">
+  <p class="eyebrow">{type} · {formattedDate}</p>
+  <h1 style="font-size: clamp(2rem, 5vw, 4.4rem); margin-bottom: 14px;">{title}</h1>
+  <p class="lead">{summary}</p>
+  <TagList tags={tags} />
+</header>

@@ -1,0 +1,37 @@
+---
+import { getCollection } from 'astro:content';
+import EventTimelineExplorer from '@components/events/EventTimelineExplorer';
+import BaseLayout from '@layouts/BaseLayout.astro';
+import { buildEventTimeline } from '@lib/relations';
+
+const [events, chapters, characters, motifs, articles] = await Promise.all([
+  getCollection('events'),
+  getCollection('chapters'),
+  getCollection('characters'),
+  getCollection('motifs'),
+  getCollection('articles')
+]);
+const timeline = buildEventTimeline({ articles, chapters, characters, events, motifs });
+---
+
+<BaseLayout
+  title="全书事件时间线"
+  description="《百年孤独》165 个结构化事件的全书叙事主干，可按章节、人物、意象与主题筛选。"
+>
+  <section class="surface event-timeline-hero">
+    <p class="eyebrow">Event Timeline</p>
+    <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem); margin-bottom: 12px;">全书事件时间线</h1>
+    <p class="lead">把结构化事件铺成一条可筛选的叙事主干，从具体事件回看人物命运、意象演变、主题分布与章节位置。</p>
+    <div class="meta-row">
+      <span class="tag">{timeline.stats.events} 个事件</span>
+      <span class="tag tag-muted">{timeline.stats.chapters} 个章节</span>
+      <span class="tag tag-muted">{timeline.stats.characters} 位人物</span>
+      <span class="tag tag-muted">{timeline.stats.motifs} 个意象</span>
+      <span class="tag tag-muted">{timeline.stats.themes} 条主题线</span>
+    </div>
+  </section>
+
+  <section class="surface event-timeline-surface">
+    <EventTimelineExplorer data={timeline} client:load />
+  </section>
+</BaseLayout>

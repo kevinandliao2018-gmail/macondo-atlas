@@ -1,0 +1,23 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import TagList from '@components/ui/TagList.astro';
+
+interface Props {
+  title: string;
+  subtitle?: string;
+  summary: string;
+  tags?: string[];
+}
+
+const { title, subtitle, summary, tags = [] } = Astro.props;
+---
+
+<BaseLayout title={title} description={summary}>
+  <section class="surface" style="margin-bottom: 22px;">
+    {subtitle && <p class="eyebrow">{subtitle}</p>}
+    <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem); margin-bottom: 12px;">{title}</h1>
+    <p class="lead">{summary}</p>
+    <TagList tags={tags} />
+  </section>
+  <slot />
+</BaseLayout>

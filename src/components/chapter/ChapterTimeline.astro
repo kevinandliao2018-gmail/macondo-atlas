@@ -1,0 +1,21 @@
+---
+interface Props {
+  events?: Array<{ id: string; data: { id?: string; order: number; title: string; summary: string } }>;
+}
+
+const events = [...(Astro.props.events ?? [])].sort((a, b) => a.data.order - b.data.order);
+---
+
+{events.length > 0 && (
+  <ol class="timeline">
+    {events.map((event) => (
+      <li id={event.data.id ?? event.id}>
+        <span class="dot">{event.data.order}</span>
+        <div>
+          <strong>{event.data.title}</strong>
+          <p class="muted" style="margin: 4px 0 0;">{event.data.summary}</p>
+        </div>
+      </li>
+    ))}
+  </ol>
+)}
