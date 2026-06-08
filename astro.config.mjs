@@ -5,7 +5,7 @@ import react from '@astrojs/react';
 export default defineConfig({
   integrations: [mdx(), react()],
   output: 'static',
-  site: 'https://macondo-archive.local',
+  site: process.env.PUBLIC_SITE_URL ?? 'https://macondo-atlas.netlify.app',
   markdown: {
     shikiConfig: {
       theme: 'github-light'

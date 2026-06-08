@@ -12,9 +12,16 @@ for (const dir of requiredDirs) {
 }
 
 const originalDir = path.join(root, '原文');
-if (!fs.existsSync(originalDir)) {
-  throw new Error('Expected private source directory 原文/ to remain in place.');
+const hasPrivateOriginalSource = fs.existsSync(originalDir);
+const isCiBuild = process.env.CI === 'true' || process.env.NETLIFY === 'true';
+
+if (!hasPrivateOriginalSource && !isCiBuild) {
+  throw new Error('Expected private source directory 原文/ to remain in place outside CI/Netlify builds.');
 }
+
+const privateSourceStatus = hasPrivateOriginalSource
+  ? 'private source directory 原文/ present locally'
+  : 'private source directory 原文/ omitted for CI/Netlify';
 
 const publicOriginalRoute = path.join(root, 'src/pages/original');
 if (fs.existsSync(publicOriginalRoute)) {
@@ -90,7 +97,7 @@ for (const article of articles) {
 }
 
 console.log(
-  `Content directories, private-source boundary, and reading map refs look good: ${chapters.length} chapters, ${events.length} events.`
+  `Content directories, private-source boundary (${privateSourceStatus}), and reading map refs look good: ${chapters.length} chapters, ${events.length} events.`
 );
 
 function readCollection(relativeDir) {
