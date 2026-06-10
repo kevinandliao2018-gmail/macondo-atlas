@@ -1,0 +1,56 @@
+---
+import RelationIndex from '@components/relations/RelationIndex.astro';
+import RelationTimeline from '@components/relations/RelationTimeline.astro';
+import type { ArticleArchive } from '@lib/relations';
+
+interface Props {
+  archive: ArticleArchive;
+}
+
+const { archive } = Astro.props;
+const hasIndex =
+  archive.chapters.length > 0 ||
+  archive.characters.length > 0 ||
+  archive.motifs.length > 0 ||
+  archive.themes.length > 0;
+const hasEvents = archive.events.length > 0;
+const hasThemeTimelineLinks = archive.themeTimelineLinks.length > 0;
+---
+
+{(hasIndex || hasEvents) && (
+  <section class="article-relation-spine" aria-labelledby="article-relation-spine-title">
+    <h2 id="article-relation-spine-title">本文档案索引</h2>
+
+    {hasIndex && (
+      <RelationIndex
+        sections={[
+          { title: '关联章节', items: archive.chapters },
+          { title: '关联人物', items: archive.characters },
+          { title: '关联意象', items: archive.motifs },
+          { title: '关联主题', items: archive.themes }
+        ]}
+      />
+    )}
+
+    {hasThemeTimelineLinks && (
+      <div class="article-spine-theme-timeline">
+        <h3>主题时间线</h3>
+        <div class="meta-row relation-tags">
+          {archive.themeTimelineLinks.map((theme) => (
+            <a class="tag tag-muted relation-tag" href={theme.href}>
+              <span>{theme.title}</span>
+              <span>{theme.meta}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {hasEvents && (
+      <div class="article-spine-events">
+        <h3>关联事件</h3>
+        <RelationTimeline events={archive.events} emptyLabel="本文暂未接入结构化事件。" />
+      </div>
+    )}
+  </section>
+)}

@@ -70,9 +70,12 @@ const readingPaths = [
     </div>
   </section>
 
-  <section class="grid cols-3" style="margin-bottom: 28px;">
-    <div class="surface">
-      <h2>章节</h2>
+  <section class="home-archive-grid" aria-label="阅读地图档案入口">
+    <div class="surface home-archive-panel">
+      <div class="home-archive-heading">
+        <h2>章节</h2>
+        <span class="tag tag-muted">{chapters.length} 个章节档案</span>
+      </div>
       <ul class="compact-list">
         {featuredChapters.map((chapter) => (
           <li>
@@ -84,8 +87,11 @@ const readingPaths = [
         ))}
       </ul>
     </div>
-    <div class="surface">
-      <h2>人物</h2>
+    <div class="surface home-archive-panel">
+      <div class="home-archive-heading">
+        <h2>人物</h2>
+        <span class="tag tag-muted">{characters.length} 位人物</span>
+      </div>
       <ul class="compact-list">
         {characters.map((character) => (
           <li>
@@ -97,8 +103,11 @@ const readingPaths = [
         ))}
       </ul>
     </div>
-    <div class="surface">
-      <h2>意象</h2>
+    <div class="surface home-archive-panel">
+      <div class="home-archive-heading">
+        <h2>意象</h2>
+        <span class="tag tag-muted">{motifs.length} 个意象</span>
+      </div>
       <ul class="compact-list">
         {motifs.map((motif) => (
           <li>
@@ -110,14 +119,18 @@ const readingPaths = [
         ))}
       </ul>
     </div>
-    <div class="surface">
-      <h2>主题</h2>
+    <div class="surface home-archive-panel">
+      <div class="home-archive-heading">
+        <h2>主题</h2>
+        <span class="tag tag-muted">{themes.length} 条主题线</span>
+      </div>
       <ul class="compact-list">
         {themes.map((theme) => (
           <li>
             <a class="link-card" href={theme.href}>
               <strong>{theme.name}</strong>
-              <span>{theme.eventCount} 个事件 · {theme.chapterCount} 个章节</span>
+              <span>{theme.summary}</span>
+              <span class="muted">{theme.eventCount} 个事件 · {theme.chapterCount} 个章节</span>
             </a>
           </li>
         ))}

@@ -15,16 +15,17 @@ const mapData = buildRelationMap({ chapters, characters, motifs, events });
 
 <BaseLayout
   title="全站关系图谱"
-  description="《百年孤独》人物、意象与章节的事件共现总览导航。"
+  description="《百年孤独》人物、意象、章节与主题的事件共现总览导航。"
 >
   <section class="surface relation-map-hero">
     <p class="eyebrow">Relation Map</p>
     <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem); margin-bottom: 12px;">全站关系图谱</h1>
-    <p class="lead">从结构化事件出发，查看人物、意象与章节在同场共现中的位置。</p>
+    <p class="lead">从结构化事件出发，查看人物、意象、章节与主题在同场共现中的位置。</p>
     <div class="meta-row">
       <span class="tag">{mapData.stats.events} 个事件</span>
       <span class="tag tag-muted">{mapData.stats.coreNodes} 个默认节点</span>
       <span class="tag tag-muted">{mapData.stats.defaultEdges} 条默认边</span>
+      <span class="tag tag-muted">{mapData.stats.themes} 个主题</span>
     </div>
   </section>
 

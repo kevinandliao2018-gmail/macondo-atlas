@@ -8,7 +8,7 @@ type MotifEntry = CollectionEntry<'motifs'>;
 type EventEntry = CollectionEntry<'events'>;
 
 type RelationKind = 'article' | 'chapter' | 'character' | 'event' | 'motif' | 'theme';
-export type RelationMapNodeKind = 'chapter' | 'character' | 'motif';
+export type RelationMapNodeKind = 'chapter' | 'character' | 'motif' | 'theme';
 
 export type RelationLink = {
   id: string;
@@ -205,6 +205,15 @@ export type ThemeArchive = {
   };
 };
 
+export type ArticleArchive = {
+  events: ArchiveEvent[];
+  chapters: RelationLink[];
+  characters: RelationLink[];
+  motifs: RelationLink[];
+  themes: RelationLink[];
+  themeTimelineLinks: RelationLink[];
+};
+
 export type RelationMapNode = {
   id: string;
   entityId: string;
@@ -257,6 +266,7 @@ export type RelationMapData = {
     characters: number;
     motifs: number;
     chapters: number;
+    themes: number;
     maxWeight: number;
   };
 };
@@ -394,13 +404,15 @@ const THEME_LABELS: Record<string, string> = {
 const RELATION_MAP_KIND_LABELS: Record<RelationMapNodeKind, string> = {
   character: '人物',
   motif: '意象',
+  theme: '主题',
   chapter: '章节'
 };
 
 const RELATION_TYPE_ORDER: Record<RelationMapNodeKind, number> = {
   character: 1,
   motif: 2,
-  chapter: 3
+  theme: 3,
+  chapter: 4
 };
 
 const LITERARY_FUNCTION_RULES = [
@@ -743,6 +755,37 @@ export function buildThemeArchive({
   };
 }
 
+export function buildArticleArchive({
+  article,
+  articles,
+  chapters,
+  characters,
+  events,
+  motifs
+}: ArchiveInput & { article: ArticleEntry }): ArticleArchive {
+  const context = createContext({ articles, chapters, characters, events, motifs });
+  const articleEventIds = new Set(article.data.events);
+  const articleEvents = events
+    .filter((event) => articleEventIds.has(event.data.id))
+    .sort(sortEvents);
+  const themes = resolveArticleThemes(article.data.themes);
+
+  return {
+    events: articleEvents.map((event) => toArticleArchiveEvent(event, context)),
+    chapters: uniqueNumbers(article.data.chapters)
+      .map((chapter) => chapterLink(chapter, context))
+      .filter(isRelationLink),
+    characters: uniqueStrings(article.data.characters)
+      .map((id) => characterLink(id, context))
+      .filter(isRelationLink),
+    motifs: uniqueStrings(article.data.motifs)
+      .map((id) => motifLink(id, context))
+      .filter(isRelationLink),
+    themes: themes.map(themeLink),
+    themeTimelineLinks: themes.map(themeTimelineLink)
+  };
+}
+
 export function buildRelationMap({
   chapters,
   characters,
@@ -761,6 +804,9 @@ export function buildRelationMap({
       ...event.data.motifs
         .filter((id) => context.motifMap.has(id))
         .map((id) => relationMapNodeId('motif', id)),
+      ...THEME_REGISTRY.filter((theme) =>
+        event.data.themes.some((themeId) => theme.matchThemes.includes(themeId))
+      ).map((theme) => relationMapNodeId('theme', theme.id)),
       relationMapNodeId('chapter', String(event.data.chapter))
     ]);
 
@@ -771,6 +817,9 @@ export function buildRelationMap({
     for (let index = 0; index < eventNodeIds.length; index += 1) {
       for (let nextIndex = index + 1; nextIndex < eventNodeIds.length; nextIndex += 1) {
         const [source, target] = [eventNodeIds[index], eventNodeIds[nextIndex]].sort();
+        if (relationMapNodeIdKind(source) === 'theme' && relationMapNodeIdKind(target) === 'theme') {
+          continue;
+        }
         const edgeId = `${source}|${target}`;
         const existing = edgeEvents.get(edgeId);
         if (existing) {
@@ -852,7 +901,24 @@ export function buildRelationMap({
       };
     });
 
-  const nodes = [...chapterNodes, ...characterNodes, ...motifNodes];
+  const themeNodes = THEME_REGISTRY.map((theme, index) => {
+    const id = relationMapNodeId('theme', theme.id);
+    return {
+      id,
+      entityId: theme.id,
+      title: theme.name,
+      href: themeHref(theme.id),
+      kind: 'theme' as const,
+      summary: theme.summary,
+      meta: theme.tags.join(' / '),
+      eventCount: eventCounts.get(id) ?? 0,
+      core: true,
+      rank: index + 1,
+      sortKey: index + 1
+    };
+  });
+
+  const nodes = [...chapterNodes, ...characterNodes, ...motifNodes, ...themeNodes];
   const nodeIds = new Set(nodes.map((node) => node.id));
   const nodesById = new Map(nodes.map((node) => [node.id, node]));
   const edges = [...edgeEvents.values()]
@@ -896,6 +962,7 @@ export function buildRelationMap({
       characters: characterNodes.length,
       motifs: motifNodes.length,
       chapters: chapterNodes.length,
+      themes: themeNodes.length,
       maxWeight: edges[0]?.weight ?? 0
     }
   };
@@ -920,6 +987,20 @@ function toArchiveEvent(event: EventEntry, context: RelationContext): ArchiveEve
     title: event.data.title,
     summary: event.data.summary,
     href: `${chapterHref(event.data.chapter)}#${event.data.id}`,
+    characters: event.data.characters.map((id) => characterLink(id, context)).filter(isRelationLink),
+    motifs: event.data.motifs.map((id) => motifLink(id, context)).filter(isRelationLink),
+    relatedArticles: event.data.relatedArticles.map((slug) => articleLink(slug, context)).filter(isRelationLink)
+  };
+}
+
+function toArticleArchiveEvent(event: EventEntry, context: RelationContext): ArchiveEvent {
+  return {
+    id: event.data.id,
+    chapter: event.data.chapter,
+    order: event.data.order,
+    title: event.data.title,
+    summary: event.data.summary,
+    href: timelineHref({ chapter: event.data.chapter }, event.data.id),
     characters: event.data.characters.map((id) => characterLink(id, context)).filter(isRelationLink),
     motifs: event.data.motifs.map((id) => motifLink(id, context)).filter(isRelationLink),
     relatedArticles: event.data.relatedArticles.map((slug) => articleLink(slug, context)).filter(isRelationLink)
@@ -1612,15 +1693,17 @@ function relationMapTimelineFilters(
   sourceNode: RelationMapNode,
   targetNode: RelationMapNode
 ) {
-  const filters: { chapter: number; character?: string; motif?: string } = {
+  const filters: { chapter: number; character?: string; motif?: string; theme?: string } = {
     chapter: event.data.chapter
   };
   const edgeNodes = [sourceNode, targetNode];
   const characters = edgeNodes.filter((node) => node.kind === 'character');
   const motifs = edgeNodes.filter((node) => node.kind === 'motif');
+  const themes = edgeNodes.filter((node) => node.kind === 'theme');
 
   if (characters.length === 1) filters.character = characters[0].entityId;
   if (motifs.length === 1) filters.motif = motifs[0].entityId;
+  if (themes.length === 1) filters.theme = themes[0].entityId;
 
   return filters;
 }
@@ -1789,6 +1872,26 @@ function motifLink(id: string, context: RelationContext): RelationLink | undefin
   };
 }
 
+function themeLink(theme: ThemeDefinition): RelationLink {
+  return {
+    id: theme.id,
+    title: theme.name,
+    href: themeHref(theme.id),
+    kind: 'theme',
+    summary: theme.summary,
+    meta: theme.tags.join(' / '),
+    sortKey: theme.id
+  };
+}
+
+function themeTimelineLink(theme: ThemeDefinition): RelationLink {
+  return {
+    ...themeLink(theme),
+    href: timelineHref({ theme: theme.id }),
+    meta: '时间线'
+  };
+}
+
 function themeFilterOption(theme: ThemeDefinition, count: number): EventTimelineFilterOption {
   return {
     id: theme.id,
@@ -1813,6 +1916,13 @@ function sortCharactersForTimelineFilter(a: CharacterEntry, b: CharacterEntry) {
 
 function sortCoOccurrences(a: CoOccurrenceItem, b: CoOccurrenceItem) {
   return b.count - a.count || a.title.localeCompare(b.title, 'zh-CN');
+}
+
+function resolveArticleThemes(themeIds: string[]) {
+  const themeIdSet = new Set(themeIds);
+  return THEME_REGISTRY.filter(
+    (theme) => themeIdSet.has(theme.id) || theme.matchThemes.some((themeId) => themeIdSet.has(themeId))
+  );
 }
 
 function sortRelationMapEdges(a: RelationMapEdge, b: RelationMapEdge) {
@@ -1843,6 +1953,10 @@ function sortEntriesByEventCount(
 function relationMapNodeId(kind: RelationMapNodeKind, id: string) {
   if (kind === 'chapter') return `${kind}:${String(id).padStart(2, '0')}`;
   return `${kind}:${id}`;
+}
+
+function relationMapNodeIdKind(nodeId: string): RelationMapNodeKind {
+  return nodeId.split(':')[0] as RelationMapNodeKind;
 }
 
 function overlap<T>(a: T[] = [], b: T[] = []) {

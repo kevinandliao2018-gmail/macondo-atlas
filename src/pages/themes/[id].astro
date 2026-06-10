@@ -53,6 +53,9 @@ const archive = buildThemeArchive({ theme, articles, chapters, characters, event
           { title: '关联意象', items: archive.motifs }
         ]}
       />
+      <a class="map-entry-link" href={`/map?focus=theme:${theme.id}`}>
+        查看它在全站关系图谱中的位置
+      </a>
       <a class="map-entry-link" href={timelineHref({ theme: theme.id })}>
         查看相关事件在全书时间线中的位置
       </a>

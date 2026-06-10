@@ -1,19 +1,29 @@
 ---
-import { render } from 'astro:content';
+import { getCollection, render } from 'astro:content';
+import ArticleRelationSpine from '@components/article/ArticleRelationSpine.astro';
 import ArticleLayout from '@layouts/ArticleLayout.astro';
 import { collectArticleTags, getPublicArticles, getRelatedArticles } from '@lib/content';
+import { buildArticleArchive } from '@lib/relations';
 
 export async function getStaticPaths() {
-  const articles = await getPublicArticles();
+  const [articles, chapters, characters, motifs, events] = await Promise.all([
+    getPublicArticles(),
+    getCollection('chapters'),
+    getCollection('characters'),
+    getCollection('motifs'),
+    getCollection('events')
+  ]);
+
   return articles.map((article) => ({
     params: { slug: article.data.slug },
-    props: { article, articles }
+    props: { article, articles, chapters, characters, motifs, events }
   }));
 }
 
-const { article, articles } = Astro.props;
+const { article, articles, chapters, characters, motifs, events } = Astro.props;
 const { Content, headings } = await render(article);
 const related = getRelatedArticles(article, articles);
+const archive = buildArticleArchive({ article, articles, chapters, characters, motifs, events });
 ---
 
 <ArticleLayout
@@ -25,5 +35,6 @@ const related = getRelatedArticles(article, articles);
   headings={headings}
   related={related}
 >
+  <ArticleRelationSpine archive={archive} />
   <Content />
 </ArticleLayout>

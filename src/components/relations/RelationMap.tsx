@@ -1,4 +1,4 @@
-import { ArrowUpRight, BookOpen, CircleDot, Users } from 'lucide-react';
+import { ArrowUpRight, BookOpen, CircleDot, Tags, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { RelationMapData, RelationMapEdge, RelationMapNode, RelationMapNodeKind } from '@lib/relations';
 
@@ -23,24 +23,28 @@ const WIDTH = 1040;
 const HEIGHT = 620;
 const MAX_EDGES = 100;
 const FOCUS_NEIGHBORS = 12;
+const KIND_ORDER: RelationMapNodeKind[] = ['character', 'motif', 'chapter', 'theme'];
 
 const KIND_LABELS: Record<RelationMapNodeKind, string> = {
   character: '人物',
   motif: '意象',
-  chapter: '章节'
+  chapter: '章节',
+  theme: '主题'
 };
 
-const KIND_ICONS = {
+const KIND_ICONS: Record<RelationMapNodeKind, typeof Users> = {
   character: Users,
   motif: CircleDot,
-  chapter: BookOpen
+  chapter: BookOpen,
+  theme: Tags
 };
 
 export default function RelationMap({ data }: Props) {
   const [enabledKinds, setEnabledKinds] = useState<Record<RelationMapNodeKind, boolean>>({
     character: true,
     motif: true,
-    chapter: true
+    chapter: true,
+    theme: true
   });
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
@@ -171,7 +175,7 @@ export default function RelationMap({ data }: Props) {
   return (
     <div className="relation-map-tool">
       <div className="relation-map-toolbar" aria-label="图谱筛选">
-        {(['character', 'motif', 'chapter'] as RelationMapNodeKind[]).map((kind) => {
+        {KIND_ORDER.map((kind) => {
           const Icon = KIND_ICONS[kind];
           return (
             <button
@@ -195,7 +199,7 @@ export default function RelationMap({ data }: Props) {
         <div className="relation-map-stage" aria-label="全站关系图谱">
           <svg className="relation-map-svg" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} role="img">
             <title>全站关系图谱</title>
-            <desc>人物、意象与章节基于同一事件共现形成的轻量关系图。</desc>
+            <desc>人物、意象、章节与主题基于同一事件共现形成的轻量关系图。</desc>
             <line className="relation-map-axis" x1="68" x2="972" y1="322" y2="322" />
             <g className="relation-map-edges">
               {visibleEdges.map((edge) => {
@@ -299,7 +303,12 @@ export default function RelationMap({ data }: Props) {
                       ) : (
                         <>
                           <circle r={nodeRadius(node)} />
-                          <text dominantBaseline="middle" textAnchor={point.anchor} x={point.anchor === 'start' ? 20 : -20}>
+                          <text
+                            dominantBaseline="middle"
+                            dy={point.anchor === 'middle' ? -24 : 0}
+                            textAnchor={point.anchor}
+                            x={nodeLabelX(point)}
+                          >
                             {node.title}
                           </text>
                         </>
@@ -420,7 +429,7 @@ export default function RelationMap({ data }: Props) {
               <p className="eyebrow">Relation Overview</p>
               <h2>全站共现概览</h2>
               <p className="muted">
-                默认保留核心人物、核心意象和二十个章节。移动到节点上可以查看它最强的相邻关系。
+                默认保留核心人物、核心意象、二十个章节和八个主题。移动到节点上可以查看它最强的相邻关系。
               </p>
               <div className="relation-map-facts">
                 <span>{data.stats.events} 个事件</span>
@@ -457,6 +466,7 @@ function layoutNodes(nodes: RelationMapNode[]) {
   const chapters = nodes.filter((node) => node.kind === 'chapter').sort((a, b) => Number(a.sortKey) - Number(b.sortKey));
   const characters = nodes.filter((node) => node.kind === 'character').sort(sortNodesForCharacterLane);
   const motifs = nodes.filter((node) => node.kind === 'motif').sort((a, b) => a.rank - b.rank);
+  const themes = nodes.filter((node) => node.kind === 'theme').sort((a, b) => a.rank - b.rank);
 
   chapters.forEach((node, index) => {
     const step = chapters.length > 1 ? 904 / (chapters.length - 1) : 0;
@@ -467,6 +477,7 @@ function layoutNodes(nodes: RelationMapNode[]) {
     });
   });
 
+  placeThemeLane(themes, coordinates);
   placeSideLane(characters, coordinates, {
     singleX: 162,
     firstX: 92,
@@ -483,6 +494,20 @@ function layoutNodes(nodes: RelationMapNode[]) {
   return coordinates;
 }
 
+function placeThemeLane(nodes: RelationMapNode[], coordinates: Map<string, Coordinates>) {
+  const laneWidth = 560;
+  const startX = (WIDTH - laneWidth) / 2;
+  const step = nodes.length > 1 ? laneWidth / (nodes.length - 1) : 0;
+
+  nodes.forEach((node, index) => {
+    coordinates.set(node.id, {
+      x: startX + step * index,
+      y: 82,
+      anchor: 'middle'
+    });
+  });
+}
+
 function placeSideLane(
   nodes: RelationMapNode[],
   coordinates: Map<string, Coordinates>,
@@ -490,8 +515,8 @@ function placeSideLane(
 ) {
   const columns = nodes.length > 12 ? 2 : 1;
   const rows = Math.ceil(nodes.length / columns);
-  const rowHeight = Math.max(28, Math.min(44, 486 / Math.max(1, rows - 1)));
-  const startY = 70;
+  const rowHeight = Math.max(28, Math.min(40, 438 / Math.max(1, rows - 1)));
+  const startY = 124;
 
   nodes.forEach((node, index) => {
     const column = columns === 1 ? 0 : index % 2;
@@ -504,6 +529,12 @@ function placeSideLane(
   });
 }
 
+function nodeLabelX(point: Coordinates) {
+  if (point.anchor === 'start') return 20;
+  if (point.anchor === 'end') return -20;
+  return 0;
+}
+
 function edgePath(source: Coordinates, target: Coordinates) {
   const sameX = Math.abs(source.x - target.x) < 1;
   const direction = sameX ? (source.x < WIDTH / 2 ? -1 : 1) : target.x > source.x ? 1 : -1;
@@ -514,6 +545,7 @@ function edgePath(source: Coordinates, target: Coordinates) {
 }
 
 function nodeRadius(node: RelationMapNode) {
+  if (node.kind === 'theme') return Math.min(12, 6 + Math.sqrt(node.eventCount) * 0.55);
   return Math.min(18, 9 + Math.sqrt(node.eventCount) * 1.35);
 }
 

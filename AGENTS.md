@@ -251,6 +251,8 @@ Theme detail pages show:
 - rule-generated theme evolution line
 - related event timeline
 - related public articles
+- entry link to the global relation map with `?focus=theme:{id}`
+- entry link to the full-book timeline with `?theme={id}`
 
 Core data builders/helpers:
 
@@ -283,8 +285,7 @@ Data rules:
 - There is no `themes` content collection in v1.
 - Static theme detail paths come only from `getThemeRegistry()`.
 - Theme pages use theme clusters, not raw theme id one-to-one matching.
-- Theme representative event links must use `timelineHref({ chapter }, eventId)`, producing links such as `/timeline?chapter=3#chapter-03-01`.
-- `/timeline` still does not support `?theme=` filtering in v1.
+- Theme representative event links must use `timelineHref({ chapter, theme: theme.id }, eventId)`, producing links such as `/timeline?chapter=3&theme=memory#chapter-03-01`.
 
 Theme cluster rules:
 
@@ -325,8 +326,8 @@ Verified after implementation:
 - `npm run build`
 - Browser check for `/themes`
 - Browser check for all 8 `/themes/[id]` detail pages
-- Browser check that representative event links open `/timeline?chapter=...#event-id`
-- Browser check that `/timeline` still has no theme filter
+- Browser check that theme detail entry links open `/timeline?theme={id}`
+- Browser check that representative event links open `/timeline?chapter=...&theme=...#event-id`
 - Browser check for mobile viewport behavior on `/themes`, `/themes/memory`, and `/themes/fate`
 - Regression browser check for `/characters/ursula-iguaran`, `/motifs/rain`, `/timeline`, and `/map`
 
@@ -346,6 +347,58 @@ Core helpers:
 - `getChapterRelatedArticles`
 
 These live in `src/lib/content.ts`.
+
+### Article Relation Spine v1
+
+Route: `/articles/[slug]`
+
+Purpose: make each public article a structured navigation node in the archive, not just a standalone essay. A reader can move from an analysis article back to its linked chapters, characters, motifs, themes, and timeline events.
+
+Implementation:
+
+- Data builder: `buildArticleArchive` in `src/lib/relations.ts`
+- Exported type: `ArticleArchive`
+- UI wrapper: `src/components/article/ArticleRelationSpine.astro`
+- Page integration: `src/pages/articles/[slug].astro`
+- Styles: `.article-relation-spine`, `.article-spine-theme-timeline`, and `.article-spine-events` blocks in `src/styles/global.css`
+
+Data rules:
+
+- The spine uses only article frontmatter: `chapters`, `characters`, `motifs`, `themes`, and `events`.
+- Do not parse Markdown bodies, do not infer relations from event `relatedArticles`, and do not add AI-generated summaries or automatic tags.
+- Do not modify content schemas for v1 article-spine work.
+- Chapter, character, motif, and event references are resolved through structured Astro content entries.
+- Article theme frontmatter may include raw theme labels; linked theme archive entries must be resolved through `THEME_REGISTRY` clusters.
+- A theme is linked when the raw article theme equals a registry id or appears in that registry entry's `matchThemes`.
+- Raw article theme labels that do not resolve to a registry entry are omitted from the linked index to avoid `/themes/{raw}` 404s.
+
+UI behavior:
+
+- The section title is `本文档案索引`.
+- `RelationIndex.astro` is reused for `关联章节`, `关联人物`, `关联意象`, and `关联主题`.
+- Resolved theme archive links open `/themes/{id}`.
+- Resolved theme timeline links open `/timeline?theme={id}`.
+- If the article has explicit frontmatter events, a light `关联事件` timeline renders via `RelationTimeline.astro`.
+- Article event links must use `timelineHref({ chapter: event.data.chapter }, event.data.id)`, producing links such as `/timeline?chapter=15#chapter-15-01`.
+- If no index sections and no explicit events exist, the spine renders nothing.
+- The spine sits after the article header and before the Markdown body; `继续阅读` remains after the article body.
+
+Responsive behavior:
+
+- Desktop: relation index sections can use a compact two-column grid inside the article content column.
+- Mobile: relation index sections collapse to one column and must not create page-level horizontal overflow.
+
+Verified after implementation:
+
+- `npm run content:check`
+- `npm run build`
+- Browser check for `/articles/chapter-15-deep-reading`
+- Browser check for `/articles/ursula-century-guardian`
+- Browser check for `/articles/ice-memory-latin-america`
+- Browser check that event links open `/timeline?chapter=...#event-id`
+- Browser check that theme archive links open `/themes/{id}`
+- Browser check that theme timeline links open `/timeline?theme={id}`
+- Browser check for mobile viewport behavior and no page-level horizontal overflow
 
 ### Search
 
@@ -379,12 +432,14 @@ Data rules:
 - Events are sorted by `chapter` and `order`.
 - Event people, motifs, chapters, and related articles are resolved through structured content entries.
 - Missing referenced people, motifs, chapters, or articles are filtered out by the builder.
+- Theme filter options come from `THEME_REGISTRY`, not from a `themes` collection.
+- Theme filtering uses each registry entry's `matchThemes` cluster against event `themes`, not raw theme id exact matching.
 
 Interaction:
 
 - Default view shows all 165 events grouped by chapter.
-- Filters support chapter, character, and motif.
-- Query params are `?chapter=1`, `?character=ursula-iguaran`, and `?motif=rain`; filters may be combined.
+- Filters support chapter, character, motif, and theme.
+- Query params are `?chapter=1`, `?character=ursula-iguaran`, `?motif=rain`, and `?theme=memory`; filters may be combined.
 - Each event has a stable in-page anchor matching its event id, such as `#chapter-01-01`.
 - Clicking chapter headings opens the chapter page; clicking person/motif tags opens their archive pages.
 - The clear button resets filters and returns the URL to `/timeline`.
@@ -394,6 +449,36 @@ Related entry links:
 - Character pages link to `/timeline?character={id}`.
 - Motif pages link to `/timeline?motif={id}`.
 - Chapter pages link to `/timeline?chapter={chapter}`.
+- Theme pages link to `/timeline?theme={id}`.
+
+### Timeline Theme Filter v1
+
+Route: `/timeline`
+
+Purpose: connect theme archive pages back to the full-book event spine. A reader can move from `/themes/memory` to `/timeline?theme=memory` and see the complete distribution of that theme cluster across structured events.
+
+Implementation:
+
+- URL helper: `timelineHref` accepts `theme?: string | null` in `TimelineHrefFilters`.
+- Data builder: `buildEventTimeline` returns `filters.themes` and `stats.themes`.
+- Filter option type: `EventTimelineFilterOption` may carry `matchThemes` for theme-cluster matching.
+- Relation link type: `RelationKind` includes `theme`.
+- UI: `src/components/events/EventTimelineExplorer.tsx` renders a “主题” select in the existing timeline toolbar.
+
+Data and URL rules:
+
+- Theme URL values are registry ids such as `memory`, `fate`, or `modernity`.
+- All theme filter options are generated from `THEME_REGISTRY` in registry order and include event counts.
+- Invalid `?theme=` values are ignored and cleaned from the URL after the React island hydrates.
+- Combined filters use AND semantics, so `/timeline?chapter=13&theme=memory` shows only chapter 13 events that match the `memory` theme cluster.
+- Theme nodes are now handled by `/map` theme-node v1; timeline theme filtering remains independent and keeps using theme clusters.
+
+Related links:
+
+- Theme detail pages link to `/map?focus=theme:{id}`.
+- Theme detail pages link to `/timeline?theme={id}`.
+- Theme evolution representative events link to `/timeline?chapter={chapter}&theme={id}#event-id`.
+- Character, motif, chapter, and relation-map timeline links keep their existing filter behavior.
 
 Responsive behavior:
 
@@ -406,8 +491,10 @@ Verified after implementation:
 - `npm run content:check`
 - `npm run build`
 - Browser check for `/timeline`
-- Browser check for URL params, select filters, clear filter behavior, and detail-page timeline links
-- Browser check for mobile viewport behavior
+- Browser check for `/timeline?theme=memory` and `/timeline?chapter=13&theme=memory`
+- Browser check for invalid `?theme=unknown`, select filters, clear filter behavior, and detail-page timeline links
+- Browser check for mobile viewport behavior and no page-level horizontal overflow
+- Regression browser check that `/map` theme-node behavior still coexists with timeline theme filtering
 
 ### Global Relation Map v1
 
@@ -425,7 +512,7 @@ Implementation:
 
 Data rules:
 
-- Nodes are only `character`, `motif`, and `chapter`.
+- Nodes are `character`, `motif`, `chapter`, and `theme`.
 - Edges come only from same-event co-occurrence.
 - Edge weight is the number of shared events.
 - Edge evidence comes from the same structured event set and includes sorted event ids, titles, chapter/order metadata, and `/timeline` hrefs.
@@ -438,17 +525,18 @@ Default map scope:
 - All 20 chapters are default core nodes.
 - Top 12 characters by event participation are default core nodes.
 - Top 10 motifs by event participation are default core nodes.
+- All 8 themes from `THEME_REGISTRY` are default core nodes.
 - Default visible edges are the strongest 100 edges among visible nodes.
 
 Interaction:
 
-- Type filters toggle 人物 / 意象 / 章节.
+- Type filters toggle 人物 / 意象 / 章节 / 主题.
 - Hiding a node type also hides related edges.
-- Clicking a node navigates to the corresponding character, motif, or chapter page.
+- Clicking a node navigates to the corresponding character, motif, chapter, or theme page.
 - Clicking a visible edge, focusing it with keyboard, or selecting it from the side panel shows the edge evidence panel.
 - Edge evidence lists all supporting co-occurrence events and links each title to `/timeline` with a stable event anchor, such as `/timeline?chapter=5#chapter-05-01`.
 - When a node is focused, the side panel also shows a compact “共现事件” evidence sample from its strongest related edges.
-- `?focus=character:{id}` and `?focus=motif:{id}` highlight the target node and include strong neighbors even when the target is not part of the default core.
+- `?focus=character:{id}`, `?focus=motif:{id}`, and `?focus=theme:{id}` highlight the target node and include strong neighbors even when the target is not part of the default core.
 - Hover/focus highlights adjacent nodes and edges; active edge selection highlights the edge endpoints.
 - The side panel switches between overview, focused node, and focused edge evidence states.
 
@@ -469,6 +557,57 @@ Verified after implementation:
 - Browser check for type filter toggles
 - Browser check for detail-page focus link
 - Browser check for mobile viewport behavior
+
+### Relation Map Theme Nodes v1
+
+Route: `/map`
+
+Purpose: close the archive navigation loop by making themes a first-class relation-map dimension. Readers can move from “记忆 / 战争 / 命运” to the people, motifs, and chapters that co-occur with that theme cluster.
+
+Implementation:
+
+- Node kind: `RelationMapNodeKind` includes `theme`.
+- Theme source: `THEME_REGISTRY` in `src/lib/relations.ts`.
+- Data builder: `buildRelationMap` in `src/lib/relations.ts`.
+- UI: `src/components/relations/RelationMap.tsx` renders the “主题” toggle and top theme lane.
+- Page entry: `src/pages/themes/[id].astro` links to `/map?focus=theme:{id}`.
+- Styles: `.relation-map-node-theme` blocks in `src/styles/global.css`.
+
+Data and edge rules:
+
+- Theme nodes are generated only from `THEME_REGISTRY`; there is still no `themes` content collection.
+- Theme event matching uses each registry entry's `matchThemes` cluster against event `themes`, not raw theme id exact matching.
+- All 8 theme nodes are `core: true` and visible by default.
+- Events generate theme edges to characters, motifs, and chapters through same-event co-occurrence.
+- v1 deliberately excludes `theme-theme` edges so abstract theme co-occurrence does not dominate the strongest-edge list.
+- Theme edge evidence links must use `timelineHref(relationMapTimelineFilters(...), eventId)`.
+- Theme edge timeline filters include `chapter` and `theme`; if the other endpoint is a character or motif, the link also keeps `character` or `motif`, producing URLs such as `/timeline?chapter=3&motif=memory&theme=memory#chapter-03-01`.
+- Do not parse Markdown bodies, do not add AI-generated relation prose, and do not modify content schemas for this feature.
+
+Interaction:
+
+- `/map` shows the “主题” type toggle on by default.
+- Turning off “主题” hides theme nodes and all theme edges.
+- `/map?focus=theme:memory` and other registry ids focus the corresponding theme node and show strong relations in the side panel.
+- Selecting a strong relation from a focused theme panel switches to the existing edge explanation/evidence panel.
+- Theme detail pages expose the graph entry before the timeline entry.
+
+Responsive behavior:
+
+- Desktop: theme nodes sit in a compact top lane above the chapter axis.
+- Mobile: the fixed-format SVG continues to scroll only inside `.relation-map-stage`; the page itself must not create horizontal overflow.
+- Theme labels must not overlap neighboring node labels.
+
+Verified after implementation:
+
+- `npm run content:check`
+- `npm run build`
+- Browser check for `/map` with 4 toggles and 8 visible theme nodes by default
+- Browser check for theme toggle off/on behavior
+- Browser check for `/map?focus=theme:memory` and `/map?focus=theme:war`
+- Browser check that theme edge evidence opens `/timeline?chapter=...&theme=...#event-id`
+- Browser check that `/themes/memory` and `/themes/fate` graph-entry links focus the theme node
+- Browser check for mobile viewport behavior, no page-level horizontal overflow, and theme-label overlap
 
 ### Relation Explanation v1
 
@@ -547,6 +686,7 @@ The current relation UI is intentionally reused across character, motif, and the
 - `src/components/relations/MotifEvolutionLine.astro`
 - `src/components/relations/ThemeEvolutionLine.astro`
 - `src/components/relations/RelationMap.tsx`
+- `src/components/article/ArticleRelationSpine.astro`
 
 Prefer extending these patterns before introducing a separate relation UI system.
 
