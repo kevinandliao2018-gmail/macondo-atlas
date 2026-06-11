@@ -1,7 +1,17 @@
 import type { CollectionEntry } from 'astro:content';
-import { articleHref, chapterHref, characterHref, isPublic, motifHref, themeHref, timelineHref } from './content';
+import {
+  articleHref,
+  chapterHref,
+  characterHref,
+  collectArticleTags,
+  isPublic,
+  motifHref,
+  themeHref,
+  timelineHref
+} from './content';
 
 type ArticleEntry = CollectionEntry<'articles'>;
+type ArticleType = ArticleEntry['data']['type'];
 type ChapterEntry = CollectionEntry<'chapters'>;
 type CharacterEntry = CollectionEntry<'characters'>;
 type MotifEntry = CollectionEntry<'motifs'>;
@@ -214,6 +224,50 @@ export type ArticleArchive = {
   themeTimelineLinks: RelationLink[];
 };
 
+export type ArticleIndexFilterOption = {
+  id: string;
+  title: string;
+  count: number;
+  href?: string;
+  summary?: string;
+  meta?: string;
+  sortKey?: number | string;
+  matchThemes?: string[];
+};
+
+export type ArticleIndexItem = {
+  id: string;
+  title: string;
+  href: string;
+  summary: string;
+  type: ArticleType;
+  typeLabel: string;
+  chapters: string[];
+  characters: string[];
+  motifs: string[];
+  themes: string[];
+  tags: string[];
+};
+
+export type ArticleIndexData = {
+  articles: ArticleIndexItem[];
+  filters: {
+    types: ArticleIndexFilterOption[];
+    chapters: ArticleIndexFilterOption[];
+    characters: ArticleIndexFilterOption[];
+    motifs: ArticleIndexFilterOption[];
+    themes: ArticleIndexFilterOption[];
+  };
+  stats: {
+    articles: number;
+    types: number;
+    chapters: number;
+    characters: number;
+    motifs: number;
+    themes: number;
+  };
+};
+
 export type RelationMapNode = {
   id: string;
   entityId: string;
@@ -414,6 +468,28 @@ const RELATION_TYPE_ORDER: Record<RelationMapNodeKind, number> = {
   theme: 3,
   chapter: 4
 };
+
+const ARTICLE_TYPE_LABELS: Record<ArticleType, string> = {
+  'chapter-reading': '章节解读',
+  'character-study': '人物分析',
+  'motif-essay': '意象专题',
+  'theme-essay': '主题论述',
+  'intertext-study': '互文研究',
+  reference: '参考资料',
+  poem: '诗歌',
+  'visual-map': '视觉图谱'
+};
+
+const ARTICLE_TYPE_ORDER = [
+  'chapter-reading',
+  'character-study',
+  'motif-essay',
+  'theme-essay',
+  'intertext-study',
+  'reference',
+  'poem',
+  'visual-map'
+] satisfies ArticleType[];
 
 const LITERARY_FUNCTION_RULES = [
   {
@@ -688,6 +764,89 @@ export function buildMotifArchive({
 
 export function getThemeRegistry() {
   return THEME_REGISTRY;
+}
+
+export function buildArticleIndex({
+  articles,
+  chapters,
+  characters,
+  motifs
+}: Pick<ArchiveInput, 'articles' | 'chapters' | 'characters' | 'motifs'>): ArticleIndexData {
+  const context = createContext({ articles, chapters, characters, events: [], motifs });
+  const publicArticles = [...articles].filter((article) => isPublic(article.data)).sort(sortArticlesByDateDesc);
+  const typeCounts = new Map<ArticleType, number>();
+  const chapterCounts = new Map<string, number>();
+  const characterCounts = new Map<string, number>();
+  const motifCounts = new Map<string, number>();
+  const themeCounts = new Map<string, number>();
+
+  const indexArticles = publicArticles.map((article) => {
+    const chapters = uniqueNumbers(article.data.chapters).map(String);
+    const characters = uniqueStrings(article.data.characters);
+    const motifs = uniqueStrings(article.data.motifs);
+    const themes = resolveArticleThemes(article.data.themes).map((theme) => theme.id);
+
+    typeCounts.set(article.data.type, (typeCounts.get(article.data.type) ?? 0) + 1);
+    chapters.forEach((chapter) => incrementCount(chapterCounts, chapter));
+    characters.forEach((character) => incrementCount(characterCounts, character));
+    motifs.forEach((motif) => incrementCount(motifCounts, motif));
+    themes.forEach((theme) => incrementCount(themeCounts, theme));
+
+    return {
+      id: article.data.slug,
+      title: article.data.title,
+      href: articleHref(article.data.slug),
+      summary: article.data.summary,
+      type: article.data.type,
+      typeLabel: ARTICLE_TYPE_LABELS[article.data.type],
+      chapters,
+      characters,
+      motifs,
+      themes,
+      tags: collectArticleTags(article)
+    };
+  });
+
+  const filters = {
+    types: ARTICLE_TYPE_ORDER.map((type) => articleTypeFilterOption(type, typeCounts.get(type) ?? 0)).filter(
+      isArticleIndexFilterOption
+    ),
+    chapters: [...chapters]
+      .sort((a, b) => a.data.chapter - b.data.chapter)
+      .map((chapter) =>
+        articleIndexFilterOptionFromLink(
+          chapterLink(chapter.data.chapter, context),
+          chapterCounts.get(String(chapter.data.chapter)) ?? 0
+        )
+      )
+      .filter(isArticleIndexFilterOption),
+    characters: [...characters]
+      .sort(sortCharactersForTimelineFilter)
+      .map((character) =>
+        articleIndexFilterOptionFromLink(characterLink(character.data.id, context), characterCounts.get(character.data.id) ?? 0)
+      )
+      .filter(isArticleIndexFilterOption),
+    motifs: [...motifs]
+      .sort((a, b) => a.data.name.localeCompare(b.data.name, 'zh-CN'))
+      .map((motif) => articleIndexFilterOptionFromLink(motifLink(motif.data.id, context), motifCounts.get(motif.data.id) ?? 0))
+      .filter(isArticleIndexFilterOption),
+    themes: THEME_REGISTRY.map((theme) => articleThemeFilterOption(theme, themeCounts.get(theme.id) ?? 0)).filter(
+      isArticleIndexFilterOption
+    )
+  };
+
+  return {
+    articles: indexArticles,
+    filters,
+    stats: {
+      articles: indexArticles.length,
+      types: filters.types.length,
+      chapters: filters.chapters.length,
+      characters: filters.characters.length,
+      motifs: filters.motifs.length,
+      themes: filters.themes.length
+    }
+  };
 }
 
 export function buildThemeIndex({
@@ -1906,6 +2065,51 @@ function themeFilterOption(theme: ThemeDefinition, count: number): EventTimeline
   };
 }
 
+function articleTypeFilterOption(type: ArticleType, count: number): ArticleIndexFilterOption | undefined {
+  if (count <= 0) return undefined;
+  return {
+    id: type,
+    title: ARTICLE_TYPE_LABELS[type],
+    count,
+    meta: '文章类型',
+    sortKey: ARTICLE_TYPE_ORDER.indexOf(type)
+  };
+}
+
+function articleThemeFilterOption(theme: ThemeDefinition, count: number): ArticleIndexFilterOption | undefined {
+  if (count <= 0) return undefined;
+  return {
+    id: theme.id,
+    title: theme.name,
+    href: themeHref(theme.id),
+    summary: theme.summary,
+    meta: theme.tags.join(' / '),
+    sortKey: theme.id,
+    count,
+    matchThemes: theme.matchThemes
+  };
+}
+
+function articleIndexFilterOptionFromLink(
+  link: RelationLink | undefined,
+  count: number
+): ArticleIndexFilterOption | undefined {
+  if (!link || count <= 0) return undefined;
+  return {
+    id: link.id,
+    title: link.title,
+    href: link.href,
+    summary: link.summary,
+    meta: link.meta,
+    sortKey: link.sortKey,
+    count
+  };
+}
+
+function sortArticlesByDateDesc(a: ArticleEntry, b: ArticleEntry) {
+  return Number(b.data.date) - Number(a.data.date);
+}
+
 function sortEvents(a: EventEntry, b: EventEntry) {
   return a.data.chapter - b.data.chapter || a.data.order - b.data.order;
 }
@@ -1976,6 +2180,10 @@ function uniqueIndexes(values: number[]) {
   return [...new Set(values)].sort((a, b) => a - b);
 }
 
+function incrementCount<T>(counts: Map<T, number>, key: T) {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
+}
+
 function withCount(link: RelationLink | undefined, count: number): EventTimelineFilterOption | undefined {
   return link ? { ...link, count } : undefined;
 }
@@ -1995,6 +2203,12 @@ function isEventEntry(value: EventEntry | undefined): value is EventEntry {
 function isEventTimelineFilterOption(
   value: EventTimelineFilterOption | undefined
 ): value is EventTimelineFilterOption {
+  return Boolean(value);
+}
+
+function isArticleIndexFilterOption(
+  value: ArticleIndexFilterOption | undefined
+): value is ArticleIndexFilterOption {
   return Boolean(value);
 }
 

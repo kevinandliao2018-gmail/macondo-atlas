@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import AiArchivePanel from '@components/ai/AiArchivePanel';
 import CharacterFateLine from '@components/relations/CharacterFateLine.astro';
 import CoOccurrencePanel from '@components/relations/CoOccurrencePanel.astro';
 import RelationIndex from '@components/relations/RelationIndex.astro';
@@ -25,6 +26,20 @@ export async function getStaticPaths() {
 const { character, articles, motifs, events, chapters, characters } = Astro.props;
 const archive = buildCharacterArchive({ character, articles, motifs, events, chapters, characters });
 const { Content } = await render(character);
+const aiContext = {
+  type: 'character',
+  title: character.data.name,
+  summary: character.data.summary,
+  tags: [...character.data.aliases, ...character.data.motifs],
+  facts: {
+    role: character.data.role,
+    generation: character.data.generation,
+    lineageType: character.data.lineageType,
+    eventCount: archive.events.length,
+    chapterCount: archive.chapters.length,
+    motifCount: archive.motifs.length
+  }
+};
 ---
 
 <KnowledgeLayout
@@ -62,6 +77,16 @@ const { Content } = await render(character);
       </div>
     </div>
   </section>
+
+  <AiArchivePanel
+    client:visible
+    context={aiContext}
+    prompts={[
+      '这个人物的命运线索如何展开？',
+      '它和哪些意象关系最紧？',
+      '我应该沿着哪些章节继续读？'
+    ]}
+  />
 
   <CharacterFateLine fateLine={archive.fateLine} />
 

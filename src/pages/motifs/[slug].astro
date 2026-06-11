@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import AiArchivePanel from '@components/ai/AiArchivePanel';
 import CoOccurrencePanel from '@components/relations/CoOccurrencePanel.astro';
 import MotifEvolutionLine from '@components/relations/MotifEvolutionLine.astro';
 import RelationIndex from '@components/relations/RelationIndex.astro';
@@ -25,6 +26,19 @@ export async function getStaticPaths() {
 const { motif, articles, characters, events, chapters, motifs } = Astro.props;
 const archive = buildMotifArchive({ motif, articles, characters, events, chapters, motifs });
 const { Content } = await render(motif);
+const aiContext = {
+  type: 'motif',
+  title: motif.data.name,
+  summary: motif.data.summary,
+  tags: motif.data.coreMeanings,
+  facts: {
+    firstAppearanceChapter: motif.data.firstAppearanceChapter ?? '未知',
+    eventCount: archive.events.length,
+    characterCount: archive.characters.length,
+    chapterCount: archive.chapters.length,
+    coreMeaningCount: motif.data.coreMeanings.length
+  }
+};
 ---
 
 <KnowledgeLayout
@@ -62,6 +76,16 @@ const { Content } = await render(motif);
       </div>
     </div>
   </section>
+
+  <AiArchivePanel
+    client:visible
+    context={aiContext}
+    prompts={[
+      '这个意象如何改变叙事气候？',
+      '它和哪些人物关系最紧？',
+      '我应该从哪些事件线索读起？'
+    ]}
+  />
 
   <MotifEvolutionLine evolutionLine={archive.evolutionLine} />
 

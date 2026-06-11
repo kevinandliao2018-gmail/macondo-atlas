@@ -1,5 +1,6 @@
 ---
 import { getCollection, render } from 'astro:content';
+import AiArchivePanel from '@components/ai/AiArchivePanel';
 import RelatedReading from '@components/article/RelatedReading.astro';
 import ChapterTimeline from '@components/chapter/ChapterTimeline.astro';
 import KnowledgeLayout from '@layouts/KnowledgeLayout.astro';
@@ -27,6 +28,20 @@ const characterMap = byId(characters);
 const motifMap = byId(motifs);
 const related = getChapterRelatedArticles(chapter, publicArticles);
 const { Content } = await render(chapter);
+const aiContext = {
+  type: 'chapter',
+  title: `${chapter.data.title}：${chapter.data.subtitle}`,
+  summary: chapter.data.summary,
+  tags: chapter.data.keywords,
+  facts: {
+    chapter: chapter.data.chapter,
+    phase: chapter.data.phase,
+    eventCount: chapterEvents.length,
+    characterCount: chapter.data.characters.length,
+    motifCount: chapter.data.motifs.length,
+    relatedArticleCount: related.length
+  }
+};
 ---
 
 <KnowledgeLayout
@@ -63,6 +78,16 @@ const { Content } = await render(chapter);
       </a>
     </div>
   </section>
+
+  <AiArchivePanel
+    client:visible
+    context={aiContext}
+    prompts={[
+      '这一章在全书结构中承担什么作用？',
+      '本章最值得追踪的人物和意象是什么？',
+      '这一章怎样推进孤独或命运主题？'
+    ]}
+  />
 
   <section class="surface" style="margin-top: 22px;">
     <h2>章节档案</h2>
