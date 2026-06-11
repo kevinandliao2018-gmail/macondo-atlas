@@ -110,9 +110,7 @@ export default async function handler(request: Request) {
             }
           ],
           inferenceConfig: {
-            maxTokens: 900,
-            temperature: 0.35,
-            topP: 0.9
+            maxTokens: 900
           }
         }),
         signal: controller.signal
@@ -120,6 +118,11 @@ export default async function handler(request: Request) {
     );
 
     if (!bedrockResponse.ok) {
+      const errorText = await bedrockResponse.text();
+      console.warn("Bedrock Converse request failed", {
+        status: bedrockResponse.status,
+        body: sanitizeLogText(errorText)
+      });
       return json({ error: classifyBedrockError(bedrockResponse.status) }, bedrockResponse.status);
     }
 
@@ -211,6 +214,9 @@ function classifyBedrockError(status: number) {
   if (status === 401 || status === 403) {
     return "AI 服务认证失败。";
   }
+  if (status === 400) {
+    return "Bedrock 请求无效，请检查模型、区域或请求参数。";
+  }
   if (status === 429) {
     return "请求过于频繁，请稍后再试。";
   }
@@ -232,4 +238,8 @@ function json(body: Record<string, unknown>, status = 200) {
       "Cache-Control": "no-store"
     }
   });
+}
+
+function sanitizeLogText(value: string) {
+  return value.replace(/[A-Za-z0-9_-]{32,}/g, "[redacted]").slice(0, 700);
 }
