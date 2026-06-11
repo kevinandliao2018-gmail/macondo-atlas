@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import AiArchivePanel from '@components/ai/AiArchivePanel';
 import RelationIndex from '@components/relations/RelationIndex.astro';
 import RelationTimeline from '@components/relations/RelationTimeline.astro';
 import ThemeEvolutionLine from '@components/relations/ThemeEvolutionLine.astro';
@@ -24,6 +25,20 @@ export async function getStaticPaths() {
 
 const { theme, articles, chapters, characters, events, motifs } = Astro.props;
 const archive = buildThemeArchive({ theme, articles, chapters, characters, events, motifs });
+const aiContext = {
+  type: 'theme',
+  title: theme.name,
+  summary: theme.summary,
+  tags: theme.tags,
+  facts: {
+    eventCount: archive.stats.events,
+    chapterCount: archive.stats.chapters,
+    characterCount: archive.stats.characters,
+    motifCount: archive.stats.motifs,
+    articleCount: archive.stats.articles,
+    matchThemes: theme.matchThemes.join(', ')
+  }
+};
 ---
 
 <KnowledgeLayout
@@ -68,6 +83,16 @@ const archive = buildThemeArchive({ theme, articles, chapters, characters, event
       </div>
     </div>
   </section>
+
+  <AiArchivePanel
+    client:visible
+    context={aiContext}
+    prompts={[
+      '这个主题在全书中如何变形？',
+      '它和哪些人物或意象关系最密？',
+      '我应该如何沿时间线阅读这个主题？'
+    ]}
+  />
 
   <ThemeEvolutionLine evolutionLine={archive.evolutionLine} />
 

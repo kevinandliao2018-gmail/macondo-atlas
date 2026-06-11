@@ -1,25 +1,35 @@
 ---
+import { getCollection } from 'astro:content';
+import ArticleIndexExplorer from '@components/article/ArticleIndexExplorer';
 import BaseLayout from '@layouts/BaseLayout.astro';
-import { articleHref, collectArticleTags, getPublicArticles } from '@lib/content';
+import { getPublicArticles } from '@lib/content';
+import { buildArticleIndex } from '@lib/relations';
 
-const articles = await getPublicArticles();
+const [articles, chapters, characters, motifs] = await Promise.all([
+  getPublicArticles(),
+  getCollection('chapters'),
+  getCollection('characters'),
+  getCollection('motifs')
+]);
+const articleIndex = buildArticleIndex({ articles, chapters, characters, motifs });
 ---
 
-<BaseLayout title="文章">
-  <section class="surface" style="margin-bottom: 22px;">
+<BaseLayout title="文章" description="《百年孤独》研究文章索引，可按类型、章节、人物、意象与主题筛选。">
+  <section class="surface article-index-hero">
     <p class="eyebrow">Research Articles</p>
     <h1 style="font-size: clamp(2.2rem, 6vw, 4.8rem);">研究文章</h1>
     <p class="lead">章节解读、人物分析、意象专题与互文研究的种子内容。</p>
+    <div class="meta-row">
+      <span class="tag">{articleIndex.stats.articles} 篇文章</span>
+      <span class="tag tag-muted">{articleIndex.stats.types} 种类型</span>
+      <span class="tag tag-muted">{articleIndex.stats.chapters} 个章节入口</span>
+      <span class="tag tag-muted">{articleIndex.stats.characters} 位人物入口</span>
+      <span class="tag tag-muted">{articleIndex.stats.motifs} 个意象入口</span>
+      <span class="tag tag-muted">{articleIndex.stats.themes} 条主题线</span>
+    </div>
   </section>
-  <section class="grid cols-2">
-    {articles.map((article) => (
-      <a class="link-card" href={articleHref(article.data.slug)}>
-        <strong>{article.data.title}</strong>
-        <span>{article.data.summary}</span>
-        <div class="meta-row">
-          {collectArticleTags(article).slice(0, 5).map((tag) => <span class="tag">{tag}</span>)}
-        </div>
-      </a>
-    ))}
+
+  <section class="surface article-index-surface">
+    <ArticleIndexExplorer data={articleIndex} client:load />
   </section>
 </BaseLayout>
